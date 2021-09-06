@@ -1,0 +1,40 @@
+{
+  "name": "season-ticket-draft",
+  "version": "0.1.0",
+  "description": "Used to do season ticket drafting",
+  "main": "index.js",
+  "scripts": {
+    "build": "webpack --config webpack.config.js",
+    "start": "webpack-dev-server"
+  },
+  "files": [
+    "../resources/games.json"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/roryj/season-ticket-draft.git"
+  },
+  "keywords": [
+    "wasm",
+    "rust",
+    "nhl",
+    "draft"
+  ],
+  "author": "Rory Jacob <roryjacob@gmail.com>",
+  "license": "(MIT OR Apache-2.0)",
+  "browser": {
+    "fs": false,
+    "path": false,
+    "os": false
+  },
+  "dependencies": {
+    "season_ticket_draft": "file:../pkg"
+  },
+  "devDependencies": {
+    "hello-wasm-pack": "^0.1.0",
+    "webpack": "^4.29.3",
+    "webpack-cli": "^3.1.0",
+    "webpack-dev-server": "^3.1.5",
+    "copy-webpack-plugin": "^5.0.0"
+  }
+}
