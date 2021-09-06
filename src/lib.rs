@@ -1,94 +1,59 @@
+pub mod calendar;
+pub mod drafter;
+mod games;
+pub mod schedule;
+pub mod web;
+
 use anyhow::{anyhow, Result};
-use serde::{de, Deserialize, Deserializer};
-use std::{fmt::Debug, fmt::Display, fs::File, io::Read, path::PathBuf, str::FromStr};
+use schedule::Schedule;
+use std::fs;
+use std::{
+    fs::File,
+    io::Read,
+    path::{Path, PathBuf},
+};
+use wasm_bindgen::prelude::*;
 
-#[derive(Debug, Deserialize)]
-struct Team {
-    id: u16,
-    name: String,
-    #[serde(rename(deserialize = "link"))]
-    team_details: String,
-}
-
-#[derive(Clone, Copy)]
-enum Drafter {
-    Rory,
-    Jordy,
-    Connor,
-    Dan,
-}
-
-impl Debug for Drafter {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
-impl Display for Drafter {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Rory => write!(f, "Rory"),
-            Self::Jordy => write!(f, "Jordy"),
-            Self::Connor => write!(f, "Connor"),
-            Self::Dan => write!(f, "Dan"),
-        }
-    }
-}
-
-#[derive(Debug, Deserialize)]
-pub struct Schedule {
-    games: Vec<Game>,
-}
-
-impl Display for Schedule {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "{:-<100}", "-");
-        writeln!(
-            f,
-            "{:^25}|{:^25}|{:^25}|{:^10}|{:^10}",
-            "date", "away", "home", "seat1", "seat2"
-        );
-        self.games.iter().for_each(|g| {
-            let seat1 = g
-                .available_seats
-                .0
-                .map_or_else(|| String::from("None"), |s| s.to_string());
-            let seat2 = g
-                .available_seats
-                .1
-                .map_or_else(|| String::from("None"), |s| s.to_string());
-            writeln!(f, "{:-<100}", "-");
-            writeln!(
-                f,
-                "{:^25}|{:^25}|{:^25}|{:^10}|{:^10}",
-                g.date, g.away_team.name, g.home_team.name, seat1, seat2
-            );
-        });
-        Ok(())
-    }
-}
-
-#[derive(Debug, Deserialize)]
-struct Game {
-    date: String,
-    #[serde(rename = "awayTeam")]
-    away_team: Team,
-    #[serde(rename = "homeTeam")]
-    home_team: Team,
-    #[serde(skip)]
-    available_seats: (Option<Drafter>, Option<Drafter>),
-}
-
-pub fn load_games(game_file: PathBuf) -> Result<Schedule> {
-    if !game_file.exists() {
-        return Err(anyhow!("{:?} does not exist!", game_file));
+#[wasm_bindgen]
+pub fn try_load_games(game_file: &str) -> Schedule {
+    let path = PathBuf::from(game_file);
+    let p = path.parent().unwrap();
+    for file in fs::read_dir(p).unwrap() {
+        println!("{}", file.unwrap().path().display());
     }
 
-    let mut file = File::open(game_file).unwrap();
+    set_panic_hook();
+    println!("calling this function");
+    load_games(game_file).expect("failed to load games fron json")
+}
+
+fn load_games<P>(game_file: P) -> Result<Schedule>
+where
+    P: AsRef<Path>,
+{
+    println!("getting deeper");
+    if !game_file.as_ref().exists() {
+        return Err(anyhow!("{:?} does not exist!", game_file.as_ref()));
+    }
+
+    let mut file = File::open(game_file.as_ref()).unwrap();
     let mut data = String::new();
     file.read_to_string(&mut data).unwrap();
 
     let s: Schedule = serde_json::from_str(&data).unwrap();
 
     Ok(s)
+}
+
+pub fn set_panic_hook() {
+    /*
+    When the `console_error_panic_hook` feature is enabled, we can call the
+    `set_panic_hook` function at least once during initialization, and then
+    we will get better error messages if our code ever panics.
+
+    For more details see
+    https://github.com/rustwasm/console_error_panic_hook#readme
+    */
+    // #[cfg(feature = "console_error_panic_hook")]
+    console_error_panic_hook::set_once();
 }
