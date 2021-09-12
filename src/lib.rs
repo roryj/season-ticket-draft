@@ -12,9 +12,7 @@ use std::{
     io::Read,
     path::{Path, PathBuf},
 };
-use wasm_bindgen::prelude::*;
 
-#[wasm_bindgen]
 pub fn try_load_games(game_file: &str) -> Schedule {
     let path = PathBuf::from(game_file);
     let p = path.parent().unwrap();

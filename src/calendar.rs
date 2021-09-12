@@ -1,14 +1,17 @@
-use chrono::{Date, Datelike, LocalResult, Month, TimeZone, Utc, Weekday};
+use chrono::{Datelike, LocalResult, Month, TimeZone, Utc, Weekday};
 use num_traits::FromPrimitive;
 use wasm_bindgen::prelude::*;
+
+use crate::schedule::{Game, Schedule};
 
 type Year = i32;
 
 #[wasm_bindgen]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug)]
 pub struct Calendar {
     start_date: (Month, Year),
     end_date: (Month, Year),
+    schedule: Schedule,
 }
 
 const WEEKYDAY_ORDER: [Weekday; 7] = [
@@ -36,6 +39,7 @@ impl Calendar {
         Self {
             start_date: (start_month, start_year),
             end_date: (end_month, end_year),
+            schedule: Schedule::new_2021_season(),
         }
     }
 }
@@ -43,6 +47,7 @@ impl Calendar {
 #[wasm_bindgen]
 impl Calendar {
     pub fn try_new(start_month: u32, start_year: i32, end_month: u32, end_year: i32) -> Self {
+        console_error_panic_hook::set_once();
         Calendar::new(
             Month::from_u32(start_month).unwrap(),
             start_year,
@@ -60,8 +65,8 @@ impl Calendar {
         let mut curr_year = start_y;
 
         loop {
-            result.push_str("<div class=\"month\">");
-            let month_calendar = build_month(curr_month, curr_year as i32);
+            result.push_str(r#"<div class="month">"#);
+            let month_calendar = self.build_month(curr_month, curr_year as i32);
             result.push_str(&month_calendar);
             result.push_str("</div>");
 
@@ -82,54 +87,62 @@ impl Calendar {
     }
 }
 
-#[wasm_bindgen]
-pub fn try_build_month(month: u32, year: i32) -> String {
-    let m: Month = Month::from_u32(month).unwrap();
+impl Calendar {
+    fn build_month(&self, month: Month, year: i32) -> String {
+        let mut result = format!("<table><caption>{}</caption><thead><tr><th>Sunday</th><th>Monday</th><th>Tuesday</th><th>Wednesday</th><th>Thursday</th><th>Friday</th><th>Saturday</th></tr></thead>", month.name());
 
-    build_month(m, year)
-}
+        let mut current_day = 1;
+        let start_date = Utc.ymd(year, month.number_from_month(), current_day);
+        let mut end_of_month = false;
 
-pub fn build_month(month: Month, year: i32) -> String {
-    let mut result = format!("<table><caption>{}</caption><thead><tr><th>Sunday</th><th>Monday</th><th>Tuesday</th><th>Wednesday</th><th>Thursday</th><th>Friday</th><th>Saturday</th></tr></thead>", month.name());
+        result.push_str("<tbody>");
 
-    let mut current_day = 1;
-    let start_date = Utc.ymd(year, month.number_from_month(), current_day);
-    let mut end_of_month = false;
+        loop {
+            result = result + "<tr>";
+            WEEKYDAY_ORDER.iter().for_each(|d| {
+                if current_day == 1 && start_date.weekday() != *d {
+                    // not yet at current day
+                    result.push_str("<td class=\"previous-month\"></td>");
+                    return;
+                }
 
-    result.push_str("<tbody>");
+                // check to see if the current day number is valid in the month
+                let maybe_date = Utc.ymd_opt(year, month.number_from_month(), current_day);
+                if maybe_date == LocalResult::None {
+                    // invalid date, we are at the end of the month
+                    result.push_str("<td class=\"next-month\"></td>");
+                    end_of_month = true;
+                    return;
+                }
 
-    loop {
-        result = result + "<tr>";
-        WEEKYDAY_ORDER.iter().for_each(|d| {
-            if current_day == 1 && start_date.weekday() != *d {
-                // not yet at current day
-                result.push_str("<td class=\"previous-month\"></td>");
-                return;
+                result.push_str(&format!(
+                    r#"<td class="current-month"><p class="date">{}</p>"#,
+                    current_day
+                ));
+
+                if let Some(game) = self.schedule.get_game_details(current_day, month, year) {
+                    result.push_str(&game.render());
+                };
+
+                result.push_str("</td>");
+
+                current_day += 1;
+            });
+            result = result + "</tr>";
+
+            if end_of_month {
+                break;
             }
-
-            // check to see if the current day number is valid in the month
-            let maybe_date = Utc.ymd_opt(year, month.number_from_month(), current_day);
-            if maybe_date == LocalResult::None {
-                // invalid date, we are at the end of the month
-                result.push_str("<td class=\"next-month\"></td>");
-                end_of_month = true;
-                return;
-            }
-
-            result.push_str(&format!(
-                r#"<td class="current-month">{}</td>"#,
-                current_day
-            ));
-
-            current_day += 1;
-        });
-        result = result + "</tr>";
-
-        if end_of_month {
-            break;
         }
-    }
 
-    result.push_str("</tbody></table>");
-    result
+        result.push_str("</tbody></table>");
+        result
+    }
 }
+
+// #[wasm_bindgen]
+// pub fn try_build_month(month: u32, year: i32) -> String {
+//     let m: Month = Month::from_u32(month).unwrap();
+
+//     build_month(m, year, None)
+// }

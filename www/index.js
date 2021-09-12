@@ -13,9 +13,9 @@ import { try_load_games, Schedule, Calendar } from "season_ticket_draft";
 //
 // console.log(games_path);
 
-const schedule = Schedule.new_2021_season();
+// const schedule = Schedule.new_2021_season();
 
-console.log(schedule);
+// console.log(schedule);
 
 const schedule_elem = document.getElementById("game-schedule")
 
@@ -26,5 +26,9 @@ const renderLoop = () => {
 
     // requestAnimationFrame(renderLoop);
 };
+
+// function gameSelect() {
+//     const game = Game
+// }
 
 requestAnimationFrame(renderLoop);
